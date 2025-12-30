@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import sys
 
 
@@ -12,58 +11,49 @@ def main() -> int:
     Returns:
         Exit code
     """
-    parser = argparse.ArgumentParser(
-        description="Music Flamingo Inference Server",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
+    # Simple subcommand dispatch without re-parsing serve arguments
+    if len(sys.argv) < 2:
+        _print_help()
+        return 0
 
-    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+    command = sys.argv[1]
 
-    # Serve command
-    serve_parser = subparsers.add_parser(
-        "serve",
-        help="Start the inference server",
-    )
-    serve_parser.add_argument(
-        "--config",
-        type=str,
-        help="Path to configuration file",
-    )
-    serve_parser.add_argument(
-        "--host",
-        type=str,
-        default="0.0.0.0",
-        help="Host to bind to",
-    )
-    serve_parser.add_argument(
-        "--port",
-        type=int,
-        default=8000,
-        help="Port to bind to",
-    )
-    serve_parser.add_argument(
-        "--gpu-ids",
-        type=str,
-        help="Comma-separated GPU IDs",
-    )
+    if command in ("-h", "--help"):
+        _print_help()
+        return 0
 
-    # Version command
-    subparsers.add_parser("version", help="Show version")
-
-    args = parser.parse_args()
-
-    if args.command == "serve":
+    if command == "serve":
         from flamingo_inference.entrypoints.cli.serve import main as serve_main
-        # Re-parse with full serve arguments
-        sys.argv = ["flamingo", "serve"] + sys.argv[2:]
+
+        # Pass all args after "serve" to serve.py's parser
+        sys.argv = ["flamingo"] + sys.argv[2:]
         return serve_main()
-    elif args.command == "version":
+
+    elif command == "version":
         from flamingo_inference import __version__
+
         print(f"flamingo-inference {__version__}")
         return 0
+
     else:
-        parser.print_help()
-        return 0
+        print(f"Unknown command: {command}")
+        _print_help()
+        return 1
+
+
+def _print_help() -> None:
+    """Print help message."""
+    print(
+        """Music Flamingo Inference Server
+
+Usage: flamingo <command> [options]
+
+Commands:
+  serve     Start the inference server
+  version   Show version information
+
+Run 'flamingo serve --help' for server options."""
+    )
 
 
 if __name__ == "__main__":
