@@ -24,6 +24,17 @@ Designed for both real-time inference and batch processing on A100/H100 GPUs.
 
 ## Installation
 
+### Using uv (Recommended)
+
+```bash
+git clone https://github.com/koosha-t/flamingo-inference.git
+cd flamingo-inference
+uv venv
+uv sync
+```
+
+### Using pip
+
 ```bash
 git clone https://github.com/koosha-t/flamingo-inference.git
 cd flamingo-inference
@@ -42,14 +53,14 @@ pip install -e .
 ### Start the Server
 
 ```bash
-# Default configuration (single GPU)
-python -m flamingo_inference.entrypoints.cli.serve
+# Using uv (recommended)
+uv run flamingo serve --config configs/default.yaml
 
-# With custom config
-python -m flamingo_inference.entrypoints.cli.serve --config configs/production.yaml
+# Or with python directly
+python -m flamingo_inference.entrypoints.cli.serve --config configs/default.yaml
 
 # Specify host/port
-python -m flamingo_inference.entrypoints.cli.serve --host 0.0.0.0 --port 8000
+uv run flamingo serve --host 0.0.0.0 --port 8000
 ```
 
 ### Open the UI
@@ -260,14 +271,13 @@ output_path = await process_manifest(
 
 ```bash
 # Install dev dependencies
-pip install -e ".[dev]"
+uv sync --extra dev
 
 # Run tests
-pytest
+uv run pytest
 
-# Format code
-black flamingo_inference/
-ruff check flamingo_inference/
+# Lint code
+uv run ruff check flamingo_inference/
 ```
 
 ## License
