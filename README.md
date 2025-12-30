@@ -272,8 +272,6 @@ ruff check flamingo_inference/
 
 ## License
 
-This inference server code is provided under the MIT License.
-
 **Important**: The Music Flamingo model checkpoints are subject to the [NVIDIA OneWay Noncommercial License](https://github.com/NVIDIA/audio-flamingo) (non-commercial use only). The Qwen-2.5 backbone is subject to the [Qwen Research License Agreement](https://github.com/QwenLM/Qwen). Please review these licenses before use.
 
 ## Acknowledgments
