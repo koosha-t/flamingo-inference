@@ -230,8 +230,27 @@ class AudioProcessor:
         import soundfile as sf
 
         audio_io = io.BytesIO(data)
-        audio_data, sample_rate = sf.read(audio_io, dtype="float32")
-        waveform = torch.from_numpy(audio_data)
+
+        # Try soundfile first with format hint
+        try:
+            audio_data, sample_rate = sf.read(
+                audio_io, dtype="float32", format=format.upper() if format else None
+            )
+            waveform = torch.from_numpy(audio_data)
+            return waveform, sample_rate
+        except Exception:
+            pass
+
+        # Fallback: write to temp file and use torchaudio (handles more formats)
+        import tempfile
+        import torchaudio
+
+        audio_io.seek(0)
+        suffix = f".{format}" if format else ".wav"
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=True) as tmp:
+            tmp.write(audio_io.read())
+            tmp.flush()
+            waveform, sample_rate = torchaudio.load(tmp.name)
         return waveform, sample_rate
 
     def _load_from_base64(

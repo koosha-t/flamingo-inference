@@ -93,18 +93,18 @@ class FlamingoModel:
         Returns:
             Initialized FlamingoModel
         """
-        from transformers import AutoProcessor
+        from transformers import AutoModel, AutoProcessor
 
         # Import the specific model class
         # Note: This may need adjustment based on the actual HuggingFace model name
         try:
             from transformers import AudioFlamingo3ForConditionalGeneration
         except ImportError:
-            # Fallback for older transformers versions
-            from transformers import AutoModelForVision2Seq as AudioFlamingo3ForConditionalGeneration
+            # Fallback: use AutoModel which handles trust_remote_code properly
+            AudioFlamingo3ForConditionalGeneration = AutoModel
             logger.warning(
                 "AudioFlamingo3ForConditionalGeneration not found, "
-                "using AutoModelForVision2Seq as fallback"
+                "using AutoModel as fallback (with trust_remote_code)"
             )
 
         logger.info(f"Loading model: {config.name}")
@@ -203,8 +203,13 @@ class FlamingoModel:
             return_tensors="pt",
         )
 
-        # Move to device
-        inputs = {k: v.to(self.device) if torch.is_tensor(v) else v for k, v in inputs.items()}
+        # Move to device and convert floating point tensors to model dtype
+        def _prepare_tensor(v: torch.Tensor) -> torch.Tensor:
+            if v.is_floating_point():
+                return v.to(self.device, dtype=self.config.torch_dtype)
+            return v.to(self.device)
+
+        inputs = {k: _prepare_tensor(v) if torch.is_tensor(v) else v for k, v in inputs.items()}
 
         # Generate
         with torch.inference_mode():

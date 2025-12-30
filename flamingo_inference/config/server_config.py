@@ -92,6 +92,9 @@ class ServerConfig:
     @classmethod
     def _from_dict(cls, data: dict) -> ServerConfig:
         """Create config from dictionary."""
+        # Create a default instance to get default values
+        defaults = cls()
+
         cors_data = data.get("cors", {})
         metrics_data = data.get("metrics", {})
         logging_data = data.get("logging", {})
@@ -102,18 +105,18 @@ class ServerConfig:
             batch_job_data["storage_dir"] = Path(batch_job_data["storage_dir"])
 
         return cls(
-            host=data.get("host", cls.host),
-            port=data.get("port", cls.port),
-            workers=data.get("workers", cls.workers),
-            timeout_keep_alive=data.get("timeout_keep_alive", cls.timeout_keep_alive),
-            max_request_size_mb=data.get("max_request_size_mb", cls.max_request_size_mb),
+            host=data.get("host", defaults.host),
+            port=data.get("port", defaults.port),
+            workers=data.get("workers", defaults.workers),
+            timeout_keep_alive=data.get("timeout_keep_alive", defaults.timeout_keep_alive),
+            max_request_size_mb=data.get("max_request_size_mb", defaults.max_request_size_mb),
             cors=CORSConfig(**cors_data),
             metrics=MetricsConfig(**metrics_data),
             logging=LoggingConfig(**logging_data),
             rate_limit=RateLimitConfig(**rate_limit_data),
             batch_job=BatchJobConfig(**batch_job_data),
             api_key=data.get("api_key"),
-            allowed_models=data.get("allowed_models", cls.allowed_models),
+            allowed_models=data.get("allowed_models", defaults.allowed_models),
         )
 
     def to_dict(self) -> dict:
