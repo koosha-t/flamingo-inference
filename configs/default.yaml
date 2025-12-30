@@ -1,0 +1,96 @@
+# Default configuration for Music Flamingo Inference Server
+
+# Model configuration
+model:
+  name: "nvidia/music-flamingo-hf"
+  revision: null
+  dtype: "float16"
+  device_map: "auto"
+  trust_remote_code: true
+  torch_compile: false
+  max_memory: null
+
+# Audio processing configuration
+audio:
+  sample_rate: 48000  # Music Flamingo expects 48kHz
+  max_duration: 600.0  # 10 minutes max
+  chunk_duration: 30.0  # Chunk duration for long audio
+  chunk_overlap: 5.0  # Overlap between chunks
+  normalize: true
+  target_loudness: -23.0  # LUFS
+
+# Text generation configuration
+generation:
+  max_tokens: 2048
+  temperature: 0.7
+  top_p: 0.9
+  top_k: 50
+  repetition_penalty: 1.0
+  do_sample: true
+  num_beams: 1
+
+# Request scheduler configuration
+scheduler:
+  max_batch_size: 8
+  max_waiting_requests: 1000
+  max_total_audio_duration: 300.0  # Max total audio in a batch (seconds)
+  policy: "priority"
+  batch_wait_timeout: 0.05
+
+# Executor configuration
+executor:
+  type: "uniproc"  # "uniproc" or "multiproc"
+  gpu_ids: null  # null = auto-detect, or list like [0, 1, 2, 3]
+  num_workers: null  # null = one per GPU
+
+# Embedding cache configuration
+cache:
+  enabled: true
+  max_size_gb: 10.0
+  cache_dir: null  # null = system temp dir
+  ttl_seconds: 86400  # 24 hours
+
+# IPC path pattern (use {pid} for process ID)
+ipc_path: "ipc:///tmp/flamingo_engine_{pid}"
+
+# API Server configuration
+server:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 1
+  timeout_keep_alive: 30
+  max_request_size_mb: 100
+
+  cors:
+    enabled: true
+    allow_origins: ["*"]
+    allow_methods: ["*"]
+    allow_headers: ["*"]
+    allow_credentials: false
+
+  metrics:
+    enabled: true
+    port: null  # null = same as server port
+    path: "/metrics"
+
+  logging:
+    level: "INFO"
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    json_format: false
+    access_log: true
+
+  rate_limit:
+    enabled: false
+    requests_per_minute: 60
+    burst_size: 10
+
+  batch_job:
+    enabled: true
+    max_concurrent_jobs: 10
+    job_timeout_seconds: 3600
+    result_retention_seconds: 86400
+    storage_dir: null
+
+  api_key: null  # null = no authentication
+  allowed_models:
+    - "nvidia/music-flamingo-hf"

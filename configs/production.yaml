@@ -1,0 +1,97 @@
+# Production configuration for Music Flamingo Inference Server
+# Optimized for A100/H100 multi-GPU deployment
+
+# Model configuration
+model:
+  name: "nvidia/music-flamingo-hf"
+  revision: null
+  dtype: "bfloat16"  # Better precision for production
+  device_map: "auto"
+  trust_remote_code: true
+  torch_compile: true  # Enable torch.compile for faster inference
+  max_memory: null
+
+# Audio processing configuration
+audio:
+  sample_rate: 48000
+  max_duration: 600.0
+  chunk_duration: 30.0
+  chunk_overlap: 5.0
+  normalize: true
+  target_loudness: -23.0
+
+# Text generation configuration
+generation:
+  max_tokens: 2048
+  temperature: 0.7
+  top_p: 0.9
+  top_k: 50
+  repetition_penalty: 1.0
+  do_sample: true
+  num_beams: 1
+
+# Request scheduler configuration - tuned for throughput
+scheduler:
+  max_batch_size: 16  # Higher batch size for throughput
+  max_waiting_requests: 5000
+  max_total_audio_duration: 600.0
+  policy: "priority"
+  batch_wait_timeout: 0.02  # Lower for latency
+
+# Executor configuration - multi-GPU
+executor:
+  type: "multiproc"
+  gpu_ids: null  # Auto-detect all GPUs
+  num_workers: null
+
+# Embedding cache configuration - larger for production
+cache:
+  enabled: true
+  max_size_gb: 50.0
+  cache_dir: "/data/flamingo_cache"
+  ttl_seconds: 604800  # 7 days
+
+# IPC path
+ipc_path: "ipc:///tmp/flamingo_engine_{pid}"
+
+# API Server configuration - production settings
+server:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 1  # Single worker with async engine
+  timeout_keep_alive: 120
+  max_request_size_mb: 200
+
+  cors:
+    enabled: true
+    allow_origins: ["*"]  # Restrict in actual production
+    allow_methods: ["GET", "POST", "OPTIONS"]
+    allow_headers: ["*"]
+    allow_credentials: false
+
+  metrics:
+    enabled: true
+    port: 9090  # Separate metrics port
+    path: "/metrics"
+
+  logging:
+    level: "INFO"
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    json_format: true  # JSON for log aggregation
+    access_log: true
+
+  rate_limit:
+    enabled: true
+    requests_per_minute: 300
+    burst_size: 50
+
+  batch_job:
+    enabled: true
+    max_concurrent_jobs: 50
+    job_timeout_seconds: 7200  # 2 hours
+    result_retention_seconds: 172800  # 48 hours
+    storage_dir: "/data/flamingo_jobs"
+
+  api_key: null  # Set via environment variable FLAMINGO_API_KEY
+  allowed_models:
+    - "nvidia/music-flamingo-hf"
