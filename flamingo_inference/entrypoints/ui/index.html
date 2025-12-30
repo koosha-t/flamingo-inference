@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Flamingo Testing UI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .drop-zone.dragover {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        .tab-active {
+            border-bottom-color: #3b82f6;
+            color: #3b82f6;
+        }
+        .chat-bubble-user {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .chat-bubble-assistant {
+            background-color: #f3f4f6;
+            color: #1f2937;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .loading { animation: pulse 1.5s ease-in-out infinite; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="max-w-4xl mx-auto p-6">
+        <!-- Header -->
+        <header class="bg-white rounded-lg shadow-sm p-4 mb-6 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">🎵</span>
+                <h1 class="text-xl font-semibold text-gray-800">Music Flamingo Testing UI</h1>
+            </div>
+            <div id="server-status" class="flex items-center gap-2">
+                <span id="status-dot" class="w-3 h-3 rounded-full bg-gray-400"></span>
+                <span id="status-text" class="text-sm text-gray-600">Checking...</span>
+            </div>
+        </header>
+
+        <!-- Audio Upload Section -->
+        <section class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div id="drop-zone" class="drop-zone border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 transition-colors">
+                <div class="text-gray-500">
+                    <span class="text-4xl block mb-2">📁</span>
+                    <p class="text-lg font-medium">Drop audio file here or click to upload</p>
+                    <p class="text-sm mt-1">Supports WAV, MP3, FLAC, OGG (max 100MB)</p>
+                </div>
+                <input type="file" id="file-input" accept="audio/*" class="hidden">
+            </div>
+
+            <!-- Audio Preview -->
+            <div id="audio-preview" class="hidden mt-4">
+                <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                    <span class="text-2xl">🎧</span>
+                    <div class="flex-1">
+                        <p id="file-name" class="font-medium text-gray-800 truncate"></p>
+                        <p id="file-info" class="text-sm text-gray-500"></p>
+                    </div>
+                    <button id="remove-file" class="text-gray-400 hover:text-red-500 text-xl">&times;</button>
+                </div>
+                <audio id="audio-player" controls class="w-full mt-3"></audio>
+            </div>
+        </section>
+
+        <!-- Tabs -->
+        <div class="bg-white rounded-lg shadow-sm mb-6">
+            <div class="flex border-b">
+                <button id="tab-caption" class="tab-btn tab-active px-6 py-3 border-b-2 border-transparent font-medium text-gray-600 hover:text-blue-500 transition-colors">
+                    Caption
+                </button>
+                <button id="tab-qa" class="tab-btn px-6 py-3 border-b-2 border-transparent font-medium text-gray-600 hover:text-blue-500 transition-colors">
+                    Q&A Chat
+                </button>
+            </div>
+
+            <!-- Caption Panel -->
+            <div id="panel-caption" class="p-6">
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Style</label>
+                        <select id="caption-style" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="detailed">Detailed</option>
+                            <option value="brief">Brief</option>
+                            <option value="technical">Technical</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Temperature: <span id="temp-value">0.7</span></label>
+                        <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.7" class="w-full">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Max Tokens</label>
+                        <input type="number" id="max-tokens" value="512" min="1" max="4096" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div class="flex items-end">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="include-embeddings" class="w-4 h-4 text-blue-600 rounded">
+                            <span class="text-sm font-medium text-gray-700">Include Embeddings</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Custom Prompt (optional)</label>
+                    <input type="text" id="custom-prompt" placeholder="Leave empty to use style preset" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <button id="analyze-btn" class="w-full bg-blue-600 text-white py-3 px-4 rounded-md font-medium hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                    <span>🔍</span>
+                    <span>Analyze Audio</span>
+                </button>
+            </div>
+
+            <!-- Q&A Panel -->
+            <div id="panel-qa" class="p-6 hidden">
+                <div id="chat-history" class="h-64 overflow-y-auto border border-gray-200 rounded-lg p-4 mb-4 bg-gray-50">
+                    <p class="text-gray-400 text-center text-sm">Upload audio and ask questions about it</p>
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" id="chat-input" placeholder="Ask a question about the audio..." class="flex-1 border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500" disabled>
+                    <button id="chat-send" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400" disabled>
+                        Send
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <section id="results-section" class="bg-white rounded-lg shadow-sm p-6 hidden">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Results</h2>
+                <button id="copy-caption" class="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1">
+                    <span>📋</span> Copy
+                </button>
+            </div>
+            <div id="caption-result" class="bg-gray-50 rounded-lg p-4 mb-4 text-gray-700 whitespace-pre-wrap"></div>
+            <div id="stats" class="flex flex-wrap gap-4 text-sm text-gray-600">
+                <span id="stat-time">⏱️ --</span>
+                <span id="stat-duration">🎵 --</span>
+                <span id="stat-tokens">📝 --</span>
+            </div>
+            <div id="embedding-info" class="hidden mt-4 p-4 bg-blue-50 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <span id="embedding-stats" class="text-sm text-blue-700">📊 Embeddings: -- frames × 1536 dims</span>
+                    <button id="download-embeddings" class="text-sm text-blue-600 hover:text-blue-700">Download JSON</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 flex items-center gap-4">
+                <div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <span id="loading-text" class="text-gray-700">Analyzing audio...</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let audioFile = null;
+        let audioBase64 = null;
+        let audioFormat = null;
+        let lastEmbeddings = null;
+        let chatHistory = [];
+
+        // DOM Elements
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const audioPreview = document.getElementById('audio-preview');
+        const audioPlayer = document.getElementById('audio-player');
+        const fileName = document.getElementById('file-name');
+        const fileInfo = document.getElementById('file-info');
+        const removeFileBtn = document.getElementById('remove-file');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const resultsSection = document.getElementById('results-section');
+        const captionResult = document.getElementById('caption-result');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const loadingText = document.getElementById('loading-text');
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const temperatureSlider = document.getElementById('temperature');
+        const tempValue = document.getElementById('temp-value');
+        const chatInput = document.getElementById('chat-input');
+        const chatSend = document.getElementById('chat-send');
+        const chatHistoryEl = document.getElementById('chat-history');
+
+        // Initialize
+        checkServerStatus();
+        setInterval(checkServerStatus, 30000);
+
+        // Event Listeners
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleFile(e.target.files[0]);
+            }
+        });
+        removeFileBtn.addEventListener('click', removeFile);
+        analyzeBtn.addEventListener('click', analyzeAudio);
+        temperatureSlider.addEventListener('input', (e) => {
+            tempValue.textContent = e.target.value;
+        });
+        document.getElementById('copy-caption').addEventListener('click', copyCaption);
+        document.getElementById('download-embeddings').addEventListener('click', downloadEmbeddings);
+
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-active'));
+                btn.classList.add('tab-active');
+                document.getElementById('panel-caption').classList.toggle('hidden', btn.id !== 'tab-caption');
+                document.getElementById('panel-qa').classList.toggle('hidden', btn.id !== 'tab-qa');
+            });
+        });
+
+        // Chat
+        chatSend.addEventListener('click', sendChatMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendChatMessage();
+        });
+
+        // Functions
+        async function checkServerStatus() {
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                if (data.ready) {
+                    statusDot.className = 'w-3 h-3 rounded-full bg-green-500';
+                    statusText.textContent = 'Server Ready';
+                } else {
+                    statusDot.className = 'w-3 h-3 rounded-full bg-yellow-500';
+                    statusText.textContent = 'Server Starting...';
+                }
+            } catch (e) {
+                statusDot.className = 'w-3 h-3 rounded-full bg-red-500';
+                statusText.textContent = 'Server Offline';
+            }
+        }
+
+        async function handleFile(file) {
+            if (!file.type.startsWith('audio/')) {
+                alert('Please upload an audio file');
+                return;
+            }
+            if (file.size > 100 * 1024 * 1024) {
+                alert('File size exceeds 100MB limit');
+                return;
+            }
+
+            audioFile = file;
+            audioFormat = file.name.split('.').pop().toLowerCase();
+            if (audioFormat === 'mpeg') audioFormat = 'mp3';
+
+            // Preview
+            fileName.textContent = file.name;
+            fileInfo.textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB`;
+            audioPlayer.src = URL.createObjectURL(file);
+            audioPreview.classList.remove('hidden');
+            dropZone.classList.add('hidden');
+
+            // Convert to base64
+            audioBase64 = await fileToBase64(file);
+
+            // Enable controls
+            analyzeBtn.disabled = false;
+            chatInput.disabled = false;
+            chatSend.disabled = false;
+
+            // Reset results
+            resultsSection.classList.add('hidden');
+            chatHistory = [];
+            updateChatDisplay();
+        }
+
+        function removeFile() {
+            audioFile = null;
+            audioBase64 = null;
+            audioFormat = null;
+            audioPlayer.src = '';
+            audioPreview.classList.add('hidden');
+            dropZone.classList.remove('hidden');
+            analyzeBtn.disabled = true;
+            chatInput.disabled = true;
+            chatSend.disabled = true;
+            resultsSection.classList.add('hidden');
+            fileInput.value = '';
+        }
+
+        async function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function analyzeAudio() {
+            if (!audioBase64) return;
+
+            const includeEmbeddings = document.getElementById('include-embeddings').checked;
+            const style = document.getElementById('caption-style').value;
+            const temperature = parseFloat(document.getElementById('temperature').value);
+            const maxTokens = parseInt(document.getElementById('max-tokens').value);
+            const customPrompt = document.getElementById('custom-prompt').value.trim();
+
+            showLoading('Analyzing audio...');
+            const startTime = Date.now();
+
+            try {
+                let response;
+                if (includeEmbeddings) {
+                    response = await fetch('/v1/audio/analyze', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            audio: {data: audioBase64, format: audioFormat},
+                            prompt: customPrompt || undefined,
+                            max_tokens: maxTokens,
+                            temperature: temperature,
+                            include_embeddings: true,
+                            embedding_format: 'float'
+                        })
+                    });
+                } else {
+                    response = await fetch('/v1/audio/captions', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            audio: {data: audioBase64, format: audioFormat},
+                            style: style,
+                            prompt: customPrompt || undefined,
+                            max_tokens: maxTokens,
+                            temperature: temperature
+                        })
+                    });
+                }
+
+                const data = await response.json();
+                const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+
+                if (data.error) {
+                    throw new Error(data.error.message || 'Unknown error');
+                }
+
+                // Display results
+                captionResult.textContent = data.caption;
+                document.getElementById('stat-time').textContent = `⏱️ ${elapsed}s`;
+                document.getElementById('stat-duration').textContent = `🎵 ${data.usage?.audio_duration_seconds?.toFixed(1) || '--'}s audio`;
+                document.getElementById('stat-tokens').textContent = `📝 ${data.usage?.completion_tokens || '--'} tokens`;
+
+                // Embedding info
+                const embeddingInfo = document.getElementById('embedding-info');
+                if (data.embedding && data.embedding.embedding) {
+                    lastEmbeddings = data.embedding.embedding;
+                    const numFrames = Array.isArray(lastEmbeddings) ? lastEmbeddings.length : 0;
+                    document.getElementById('embedding-stats').textContent = `📊 Embeddings: ${numFrames} frames × 1536 dims`;
+                    embeddingInfo.classList.remove('hidden');
+                } else {
+                    lastEmbeddings = null;
+                    embeddingInfo.classList.add('hidden');
+                }
+
+                resultsSection.classList.remove('hidden');
+
+            } catch (e) {
+                alert('Error: ' + e.message);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function sendChatMessage() {
+            const question = chatInput.value.trim();
+            if (!question || !audioBase64) return;
+
+            chatInput.value = '';
+            chatHistory.push({role: 'user', content: question});
+            updateChatDisplay();
+
+            showLoading('Thinking...');
+
+            try {
+                const response = await fetch('/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        messages: [{
+                            role: 'user',
+                            content: [
+                                {type: 'audio', audio: {data: audioBase64, format: audioFormat}},
+                                {type: 'text', text: question}
+                            ]
+                        }],
+                        max_tokens: 512,
+                        temperature: 0.7
+                    })
+                });
+
+                const data = await response.json();
+                if (data.error) {
+                    throw new Error(data.error.message);
+                }
+
+                const reply = data.choices?.[0]?.message?.content || 'No response';
+                chatHistory.push({role: 'assistant', content: reply});
+                updateChatDisplay();
+
+            } catch (e) {
+                chatHistory.push({role: 'assistant', content: 'Error: ' + e.message});
+                updateChatDisplay();
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function updateChatDisplay() {
+            if (chatHistory.length === 0) {
+                chatHistoryEl.innerHTML = '<p class="text-gray-400 text-center text-sm">Upload audio and ask questions about it</p>';
+                return;
+            }
+            chatHistoryEl.innerHTML = chatHistory.map(msg => `
+                <div class="mb-3 ${msg.role === 'user' ? 'text-right' : 'text-left'}">
+                    <span class="inline-block max-w-[80%] px-4 py-2 rounded-lg ${msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'}">
+                        ${msg.content}
+                    </span>
+                </div>
+            `).join('');
+            chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+        }
+
+        function copyCaption() {
+            const text = captionResult.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.getElementById('copy-caption');
+                btn.textContent = '✓ Copied!';
+                setTimeout(() => btn.innerHTML = '<span>📋</span> Copy', 2000);
+            });
+        }
+
+        function downloadEmbeddings() {
+            if (!lastEmbeddings) return;
+            const blob = new Blob([JSON.stringify(lastEmbeddings)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'embeddings.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function showLoading(text) {
+            loadingText.textContent = text;
+            loadingOverlay.classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            loadingOverlay.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
