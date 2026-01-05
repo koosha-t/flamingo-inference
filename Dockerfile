@@ -20,8 +20,8 @@ COPY pyproject.toml uv.lock ./
 COPY flamingo_inference/ ./flamingo_inference/
 COPY configs/ ./configs/
 
-# Install dependencies using uv with locked versions
-RUN uv pip install --system --frozen -e .
+# Install dependencies
+RUN uv pip install --system -e .
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s \
